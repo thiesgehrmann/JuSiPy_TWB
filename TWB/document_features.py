@@ -349,7 +349,7 @@ def collapse(A):
         return A.copy()
     #fi
 
-    return self._obj.drop(columns='sentence_').groupby('document_').agg(sum).reset_index()
+    return A.drop(columns='sentence_').groupby('document_').agg(sum).reset_index()
 #edef
 
 #########################################################################
