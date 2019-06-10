@@ -55,7 +55,8 @@ class XLIFF(object):
         Load an XLIFF formatted XML file
 
         """
-        self._xml  = ET.parse(filename) 
+        huge_parser = ET.XMLParser(encoding='utf-8', recover=True, huge_tree=True)
+        self._xml  = ET.parse(filename , huge_parser) 
         self._root = self._xml.getroot()
         self._nsmap = self._root.nsmap
     #edef
