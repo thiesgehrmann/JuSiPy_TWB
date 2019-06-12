@@ -34,6 +34,15 @@ def format_namespace_tag(tag, nsmap):
     return '{%s}%s' % (nsmap.get(ns, ''), t)
 #edef
 
+class Fake_root(object):
+    def __iter__(self): # To loop through the file tags
+        return [].__iter__()
+    #edef
+    def iter(*pargs, **kwargs): # To loop through a tag search.
+        return [].__iter__()
+    #edef
+#eclass
+
 class XLIFF(object):
     """
     Parse an XLIFF formatted file
@@ -56,9 +65,21 @@ class XLIFF(object):
 
         """
         huge_parser = ET.XMLParser(encoding='utf-8', recover=True, huge_tree=True)
-        self._xml  = ET.parse(filename , huge_parser) 
-        self._root = self._xml.getroot()
-        self._nsmap = self._root.nsmap
+        self._xml  = ET.parse(filename , huge_parser)
+        self._root = self._xml.getroot() 
+        
+        # For some reason there is a problem with the huge parser sometimes. Fall back to the normal parser.
+        if self._root is None:
+            self._xml = ET.parse(filename)
+            self._root = self._xml.getroot()
+        #fi
+        
+        # If even the normal parser doesnt work, fall back to an empty text. This file is a bit fucked up.
+        if self._root is None:
+            self._root = Fake_root()
+        #fi
+        self._nsmap = self._root.nsmap if hasattr(self._root, 'nsmap') else {}
+            
     #edef
 
     @property
@@ -137,6 +158,16 @@ class XLIFF(object):
 
         return self._itertext('target')
     #edef
-
+    
+    def is_bad(self):
+        """
+        Returns True if the file is in some way poorly formatted, and we couldn't read it.
+        False otherwise
+        
+        Returns:
+            Boolean
+        """
+        
+        return isinstance(self._root, Fake_root)
 #eclass
 
