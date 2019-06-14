@@ -3,9 +3,11 @@ import urllib
 import json
 import os
 import hashlib
-import TWB
 import os
 dir_path = os.path.dirname(os.path.realpath(__file__))
+
+from .lsc import LSC
+from . import common
 
 class Article(object):
     """
@@ -20,7 +22,7 @@ class Article(object):
         * text
         * country
     """
-    def __init__(self, article, request, lsc=TWB.LSC()):
+    def __init__(self, article, request, lsc=LSC()):
         self._request = urllib.parse.parse_qs(request.split('?')[1])
         self._article = article
         self._countries = None
@@ -123,8 +125,16 @@ class Article(object):
         return self._countries
     #edef
     
+    @property
+    def topic(self):
+        """
+        Return the topic by which this article was found.
+        """
+        return self._request['q'][0].lower()
+    #edef
+    
     def __equals__(self, other):
-        return self._article == other._article
+        return self._article.text() == other._article.text()
     #edef
 #eclass
 
@@ -146,7 +156,7 @@ def gen_request(query, api_key, **kwargs):
     defaults = {'pageSize' : 100,
                 'language' : 'en',
                 'sortBy'   : 'relevancy',
-                'q'        : query,
+                'q'        : query.lower(),
                 'apiKey'   : api_key}
     defaults.update(kwargs)
     data = urllib.parse.urlencode(defaults)
@@ -171,7 +181,6 @@ def do_request(request, cache=True, overwrite=False):
         Dict[Dict] of JSON result
     """
     cache_file = '%s/../cache/newsapi.%s.json' % (dir_path, hashlib.md5(request.encode('utf-8')).hexdigest())
-    print(cache_file)
     if cache and os.path.isfile(cache_file) and (not overwrite):
         with open(cache_file) as ifd:
             return json.load(ifd)
@@ -222,4 +231,91 @@ def news_articles(query, api_key, pages=1, cache=True, overwrite=False, **kwargs
         A.extend([Article(a, req) for a in data['articles']])
     #efor
     return A
+#edef
+
+
+        
+class News(object):
+    """
+    An object to handle news articles and data about them
+    """
+    
+    def __init__(self, topics, api_key, **kwargs):
+        """
+        Initialize the News articles
+        
+        parameters:
+        -----------
+        
+        topics: list[String]
+            The news topics you are interested in
+            
+        api_key: String
+            The newsAPI api key
+            
+        **kwargs: Dict
+            Additional arguments to news_articles
+        """
+        self._topics  = topics
+        self._api_key = api_key
+        self._kwargs  = kwargs
+        self._topic_articles = {}
+        for topic in topics:
+            self.add_topic(topic)
+        #efor
+        
+    #edef
+    
+    def add_topic(self, topic, **kwargs):
+        """
+        Add a topic of interest 
+        
+        parameters:
+        -----------
+        
+        topic: String
+            The news topic you are interested in
+            
+        **kwargs: Dict
+            Additional arguments to news_articles
+        """
+        
+        kw = self._kwargs
+        kw.update(kwargs)
+        self._topic_articles[topic] = news_articles(topic, self._api_key, **kw)
+    #edef
+    
+    @property
+    def topic_countries(self):
+        """
+        Get a list of countries per topic, sorted by prevalence
+        
+        returns:
+        --------
+        dict[topic->List[(ISO3, frequency)]]
+        """
+        TC = { t: common.freq([i for l in [a.country() for a in A] for i in l])
+                  for (t,A) in self._topic_articles.items() }
+        return { t: sorted(v.items(), key=lambda x: x[1], reverse=True) for (t,v) in TC.items() }
+    #edef
+    
+    @property
+    def articles(self):
+        """
+        Return a list of articles
+        """
+        return [ a for topic in self._topic_articles for a in self._topic_articles[topic] ]
+    #edef
+    
+    @property
+    def topics(self):
+        """
+        Get the topics
+        
+        returns:
+        --------
+        Dict[topic->List[Article] (sorted by most relevant to topic)]
+        """
+        return self._topic_articles
+    #edef
 #edef

@@ -41,3 +41,29 @@ def freq(lst):
     #efor
     return C
 #edef
+
+def group(lst, key=lambda x: x[0], value=lambda x:x):
+    """
+    Group a list of elements by some factor in the element:
+    
+    parameters:
+    -----------
+    lst: List[objects]
+        The objects to group
+        
+    key: function
+        The function that defines the grouping
+    
+    value: function
+        The function that determines what to keep from the object in the grouping
+        
+    returns:
+    Dict[g -> list[objects]]
+    """
+    G = {}
+    for x in lst:
+        k = key(x)
+        G[k] = G.get(k,[]) + [ value(x) ]
+    #efor
+    return G
+#edef

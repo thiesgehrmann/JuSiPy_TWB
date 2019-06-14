@@ -112,11 +112,14 @@ class LSC(object):
     """
     def __init__(self):
         self.LC = df_to_upper(pd.read_excel('%s/../data/language_codes.xlsx' % dir_path))
-        self.CL = df_to_upper(pd.read_excel('%s/../data/country_languages.xlsx' % dir_path))
-
         self.CC = df_to_upper(pd.read_excel('%s/../data/country_codes.xlsx' % dir_path))
         self._CC = CountryCode()
         self.SC = df_to_upper(pd.read_excel('%s/../data/script_codes.xlsx' % dir_path))
+        
+        self.CL = df_to_upper(pd.read_excel('%s/../data/country_languages.xlsx' % dir_path))
+        self.CL['country_iso3']   = self.CL.country_iso2.apply(lambda x: self.country(x).iso3)
+        self.CL.languages_iso     = self.CL.languages_iso.apply(lambda x: [ y.strip() for y in x.split(',')])
+        self.CL['languages_iso3'] = self.CL.languages_iso.apply(lambda x: [ self.language(y).iso3 for y in x ])
     #edef
     
     def country(self, code, format=None):
@@ -233,6 +236,28 @@ class LSC(object):
             r = [[None] * len(self.LC.columns)]
         #fi
         return namedtuple('language', self.LC.columns)(*r[0])
+    #edef
+    
+    def country_languages(self, iso3_code):
+        """
+        Lookup country languages by iso3 code
+        
+        parameters:
+        -----------
+        code: string
+            The code to lookup
+
+            
+        returns:
+        --------
+        list[iso3 language codes]
+        """
+        r = self.CL[self.CL.country_iso3 == iso3_code].languages_iso3
+        
+        if len(r) < 1:
+            return []
+        #fi
+        return r.values[0]
     #edef
     
     def detect(self, code):
