@@ -1,0 +1,1 @@
+{"status": "error", "code": "parameterInvalid", "message": "You are trying to request results too far in the past. Your plan permits you to request articles as far back as 2019-05-12, but you have requested 2019-05-05. To extend this please upgrade to a paid plan."}

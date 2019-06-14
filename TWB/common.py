@@ -21,3 +21,23 @@ def df_to_upper(df):
     #efor
     return df
 #edef
+
+def freq(lst):
+    """
+    calculate the frequency of items in a list
+    
+    parameters:
+    -----------
+    lst: List[Hashable Objects]
+        The list you have
+        
+    returns:
+    --------
+    freq: dict[hashable object -> int]
+    """
+    C = {}
+    for i in lst:
+        C[i] = C.get(i, 0) + 1
+    #efor
+    return C
+#edef
