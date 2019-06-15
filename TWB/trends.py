@@ -13,6 +13,7 @@ from bokeh.io import output_notebook
 from datetime import datetime as dt
 from bokeh.models import DatetimeTickFormatter
 
+
 class Trends(object):
     """
     Returns information from google trends cached data.
@@ -233,6 +234,8 @@ class Trends(object):
         p.xaxis.axis_label = 'Month'
         p.yaxis.axis_label = 'Total search'
         #p.circle(2010, temp_df.IncidntNum.min(), size = 10, color = 'red')
+        
+        
 
         p.line(self._validation_df.index, self._validation_df.values,line_color="purple", line_width = 3)
         p.line(df2.index, df2[str(self._country)],line_color="red", line_width = 3)
