@@ -1,0 +1,1 @@
+{"batchcomplete": "", "warnings": {"main": {"*": "Unrecognized parameters: extract, explaintext."}, "query": {"*": "Unrecognized value for parameter \"prop\": extract."}}, "query": {"normalized": [{"from": "query", "to": "Query"}], "pages": {"679390": {"pageid": 679390, "ns": 0, "title": "Query"}}}}
