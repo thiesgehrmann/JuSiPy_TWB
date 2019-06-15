@@ -7,12 +7,91 @@ import glob
 import warnings
 warnings.filterwarnings('ignore')
 
+from .lsc import LSC
+lsc = LSC()
+
 from bokeh.io import show, output_file
 from bokeh.plotting import figure
 from bokeh.io import output_notebook
 from datetime import datetime as dt
 from bokeh.models import DatetimeTickFormatter
 
+tags = [ 'humanitarian crisis',
+         'natural disaster',
+         'environmental crisis',
+         'disability',
+         'gender',
+         'genital mutilation',
+         'racism',
+         'genocide',
+         'civil war',
+         'terrorism',
+         'infectious disease',
+         'political revolution',
+         'political prisoner',
+         'amnesty',
+         'corruption',
+         'health',
+         'gender inequality',
+         'rape',
+         'ebola',
+         'aids',
+         'hiv',
+         'technology',
+         'artificial intelligence',
+         'military',
+         'war',
+         'climate change',
+         'starvation',
+         'food shortage',
+         'dehydration',
+         'water shortage',
+         'attack',
+         'aggression',
+         'logistics',
+         'nutrition',
+         'protection',
+         'shelter',
+         'drinking water',
+         'sanitation',
+         'hygiene',
+         'refugee camp',
+         'education',
+         'emergency communication system',
+         'food security',
+         'human rights',
+         'children',
+         'pregnancy',
+         'old age',
+         'justice',
+         'law',
+         'maintenance (technical)',
+         'homelessness',
+         'art',
+         'culture',
+         'indigenous peoples'
+       ]
+
+def download_trends_for_compared_countries_general(country1, country2, tag):
+        comp_list = [country1+' '+tag, country2+' '+tag]
+        
+#         if not (os.path.isdir("Data/trends/countries")):
+#                     os.mkdir('Data/trends/countries/')
+
+                #check if country file already exists
+                #print('Data/trends/countries/'+self._country+'.pkl')
+        if not (os.path.exists("Data/trends/topics/"+str(tag)+'/'+country1+'.pkl')):
+            pytrend = TrendReq(hl='en-US', tz=360)
+            pytrend.build_payload(comp_list, timeframe='all')
+            interest_over_time_df = pytrend.interest_over_time()
+            print("Country data do not exist, downloading now...")
+            interest_over_time_df.to_pickle('Data/trends/topics/'+str(tag)+'/'+country1+'.pkl')
+            print('Country information downloaded')
+            #region_df = pytrend.interest_by_region(resolution='COUNTRY', inc_low_vol=False, inc_geo_code=False)
+        else:
+            print("You are lucky, country already downloaded")
+
+    
 
 class Trends(object):
     """
@@ -36,6 +115,8 @@ class Trends(object):
         self._window = kwargs.get('window', None)
         self._country_for_comparison = kwargs.get('country_for_comparison', None)
         self._validation_df = kwargs.get('validation_df', None)
+        self._topic = kwargs.get('topic', None)
+        self._preload = None
         
     
     #edef
@@ -151,25 +232,6 @@ class Trends(object):
         show(p)
 
         
-    @property
-    def download_trends_for_compared_countries_general(self):
-        comp_list = [self._country, self._country_for_comparison]
-        if not (os.path.isdir("Data/trends/countries")):
-                    os.mkdir('Data/trends/countries/')
-
-                #check if country file already exists
-                #print('Data/trends/countries/'+self._country+'.pkl')
-        if not (os.path.exists("Data/trends/countries/"+self._country+'_compared'+'.pkl')):
-            pytrend = TrendReq(hl='en-US', tz=360)
-            pytrend.build_payload(comp_list, timeframe='all')
-            interest_over_time_df = pytrend.interest_over_time()
-            print("Country data do not exist, downloading now...")
-            interest_over_time_df.to_pickle('Data/trends/countries/'+str(comp_list[0])+'_compared'+'.pkl')
-            print('Country information downloaded')
-            #region_df = pytrend.interest_by_region(resolution='COUNTRY', inc_low_vol=False, inc_geo_code=False)
-        else:
-            print("You are lucky, country already downloaded")
-
     
     
     @property
@@ -250,5 +312,81 @@ class Trends(object):
         # output_file("line_chart.html", title="Line Chart")
         show(p)
             
+
+
+    @property
+    def download_country_data_per_topic(self):
+        #check if folder exists
+        #print(lsc.CC.country)
+        for tag in tags:
+            if not (os.path.isdir("Data/trends/topics/"+tag)):
+                os.mkdir('Data/trends/topics/'+tag)
+            for index, country in enumerate(lsc.CC.country):
+                if (index+1 < len(lsc.CC.country)):
+                    #fetch data per country + topic compared with country+1 +topic
+                    #print(lsc.CC.country[index], lsc.CC.country[index+1])
+                    download_trends_for_compared_countries_general(lsc.CC.country[index], lsc.CC.country[index+1], tag)
+                    
+
+
+
+    def preload(self):
+        if self._preload is None:
+            unranked_df = pd.DataFrame(columns=('country', 'occurences'))
+            if not (os.path.isdir("Data/trends/topics/")):
+                os.mkdir('Data/trends/topics/')
+                print('subfolder for topics created')
+            #fi
+            L = []
+            for name in glob.glob('Data/trends/topics/'+self._topic+"/"+'*.pkl'):
+                per_country_df = pd.read_pickle(name)
+                if not (per_country_df.empty):
+
+                    D = per_country_df.groupby(pd.TimeGrouper('M')).max()
+                    D = D[[D.columns[0]]]
+                    D = D.rename(columns={D.columns[0] : lsc.country(' '.join(D.columns[0].split(' ')[:-1])).iso3},
+                                 index={i : i.date().strftime('%Y-%m') for i in D.index})
+                    L.append(D)
+                #fi
+            #efor
+            self._preload = pd.concat(L)
+        #fi
             
+        return self._preload
+    #edef
+    
+    def ranked_countries_per_topic(self, timestamp):
+        P = self.preload()
+        
+        return P.loc[timestamp].fillna(0).sum().sort_values(ascending=False)
+    #edef
+
+    def _ranked_countries_per_topic(self, timestamp):
+        #check if folder exists
+        unranked_df = pd.DataFrame(columns=('country', 'occurences'))
+        if not (os.path.isdir("Data/trends/topics/")):
+            os.mkdir('Data/trends/topics/')
+            print('subfolder for topics created')
+        for name in glob.glob('Data/trends/topics/'+self._topic+"/"+'*.pkl'):
+            
+            per_country_df = pd.read_pickle(name)
+            if not (per_country_df.empty):
+                #print(per_country_df)
+                per_country_df = per_country_df.groupby(pd.TimeGrouper('M')).max()
+
+
+                #find the row that the index matches the timestamp
+                per_timestamp_row = per_country_df.loc[[ t.date().strftime('%Y-%m') == self._timestamp
+                                                         for t in per_country_df.index ]]
+                
+                unranked_df = unranked_df.append({'country': name, 'occurences': per_timestamp_row.values[0]}, ignore_index=True)
+            #fi
+        #efor
+        unranked_df['occurences'] = unranked_df.occurences.apply(lambda x: x[0])
+        unranked_df['country'] = unranked_df.country.apply(lambda x: lsc.country(x.split('/')[-1].split('.')[0]).iso3)
+        return(unranked_df.sort_values('occurences', ascending=True))       
+        #return(unranked_df.sort_values(by='occurences',axis=1))
+            
+            
+        
         
