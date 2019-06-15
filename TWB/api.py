@@ -36,7 +36,8 @@ class API(object):
             xliffs = [ xliffs ]
         #fi
         
-        XA = [ { 'target_lsc' : self.lsc.detect(i.target_lang) } for i in xliffs ]
+        XA = [ { 'target_lsc' : self.lsc.detect(i.target_lang),
+                 'source_lsc' : self.lsc.detect(i.source_lang) } for i in xliffs ]
         
         topic_languages = self._get_topics_languages(xliffs, max_topics)
         for i,v in enumerate(topic_languages):
@@ -87,19 +88,21 @@ class API(object):
 
         xliff_annot = []
         for xliff_i, xt, in enumerate(xliff_topics):
+            target_lang = self.lsc.detect(xliffs[xliff_i].target_lang)
+            source_lang = self.lsc.detect(xliffs[xliff_i].source_lang)
             A = { t : { 'distance' : d,
                         'relevant_country_languages' : {
-                            country : { 'frequency' : count, 'language_relevant' : False }
+                            country : {
+                              'frequency' : count,
+                              'target_rel' : target_lang.language.iso3 in self.lsc.country_languages(country),
+                              'source_rel' : source_lang.language.iso3 in self.lsc.country_languages(country)
+                            }
                             for (country, count) in self.TC[t]
                         }
-                      } for (t,d) in xt.items() }
-                     
-            target_lang = self.lsc.detect(xliffs[xliff_i].target_lang)
-            for t in A:
-                for country in A[t]['relevant_country_languages']:
-                    A[t]['relevant_country_languages'][country]['language_relevant'] = target_lang.language.iso3 in self.lsc.country_languages(country)
-                #efor
-            #efor
+                      }
+                 for (t,d) in xt.items()
+                }
+            
             xliff_annot.append(A)
         #efor
         return xliff_annot
