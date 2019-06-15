@@ -7,23 +7,34 @@ import glob
 import warnings
 warnings.filterwarnings('ignore')
 
+from bokeh.io import show, output_file
+from bokeh.plotting import figure
+from bokeh.io import output_notebook
+from datetime import datetime as dt
+from bokeh.models import DatetimeTickFormatter
+
 class Trends(object):
     """
     Returns information from google trends cached data.
     """
-    def __init__(self, country, timestamp, window):
+    def __init__(self, country, *args, **kwargs):
         """
         Get the information for a specific country
         
         parameters:
         -----------
         country in full letters (ex. Greece),
+        
+        optional:
         timestamp: '2016-05',
         window (int)
+        country_for_comparison
         """
         self._country = country
-        self._timestamp = timestamp
-        self._window = window
+        self._timestamp = kwargs.get('timestamp', None)
+        self._window = kwargs.get('window', None)
+        self._country_for_comparison = kwargs.get('country_for_comparison', None)
+        d = kwargs.get('d', None)
         
     
     #edef
@@ -108,11 +119,7 @@ class Trends(object):
         """
         Plot trends for only only country without any tag
         """
-        from bokeh.io import show, output_file
-        from bokeh.plotting import figure
-        from bokeh.io import output_notebook
-        from datetime import datetime as dt
-        from bokeh.models import DatetimeTickFormatter
+        
         
         df2 = pd.read_pickle('Data/trends/countries/'+ self._country+'.pkl')
 
@@ -132,6 +139,64 @@ class Trends(object):
         #p.circle(2010, temp_df.IncidntNum.min(), size = 10, color = 'red')
 
         p.line(df2.index, df2[str(self._country)],line_color="purple", line_width = 3)
+
+        p.xaxis.formatter=DatetimeTickFormatter(
+
+                days=["%d %B %Y"],
+                months=["%d %B %Y"],
+                years=["%d %B %Y"],
+            )
+        # output_file("line_chart.html", title="Line Chart")
+        show(p)
+
+        
+    @property
+    def download_trends_for_compared_countries_general(self):
+        comp_list = [self._country, self._country_for_comparison]
+        if not (os.path.isdir("Data/trends/countries")):
+                    os.mkdir('Data/trends/countries/')
+
+                #check if country file already exists
+                #print('Data/trends/countries/'+self._country+'.pkl')
+        if not (os.path.exists("Data/trends/countries/"+self._country+'_compared'+'.pkl')):
+            pytrend = TrendReq(hl='en-US', tz=360)
+            pytrend.build_payload(comp_list, timeframe='all')
+            interest_over_time_df = pytrend.interest_over_time()
+            print("Country data do not exist, downloading now...")
+            interest_over_time_df.to_pickle('Data/trends/countries/'+str(comp_list[0])+'_compared'+'.pkl')
+            print('Country information downloaded')
+            #region_df = pytrend.interest_by_region(resolution='COUNTRY', inc_low_vol=False, inc_geo_code=False)
+        else:
+            print("You are lucky, country already downloaded")
+
+    
+    
+    @property
+    def plot_general_information_for_compared_countries_general(self):
+        """
+        Plot trends for compared countries without any tag
+        Needs to get an additional country as kwarg
+        """
+        
+        df2 = pd.read_pickle('Data/trends/countries/'+ self._country+'_compared'+'.pkl')
+
+        output_notebook()
+        TOOLS = 'save,pan,box_zoom,reset,wheel_zoom,hover'
+        TOOLTIPS = [
+            ('month', '@x{datetime}'),
+            ('Total searches', '@y'),
+        ]
+
+        p = figure(title="Monthly-wise total search of term - "+str(self._country) +'-'+str(self._country_for_comparison), y_axis_type="linear", plot_height = 400,
+                   tools = TOOLS, tooltips = TOOLTIPS, plot_width = 800)
+
+
+        p.xaxis.axis_label = 'Month'
+        p.yaxis.axis_label = 'Total search'
+        #p.circle(2010, temp_df.IncidntNum.min(), size = 10, color = 'red')
+
+        p.line(df2.index, df2[str(self._country)],line_color="purple", line_width = 3)
+        p.line(df2.index, df2[str(self._country_for_comparison)],line_color="purple", line_width = 3)
 
         p.xaxis.formatter=DatetimeTickFormatter(
 
