@@ -40,16 +40,20 @@ class Classification(object):
         """
         
         classifier = self._load_model(model_name)
+        # calculate the token frequencies of the current text
         freqs =  self._calculate_text_features(" ".join(extract_words(text)), mode) 
+        # remove all tokens that are digits as the trained model had the same thing
         inds = []
         for i in freqs.keys():
             if i.isdigit():
                 inds.append(i)
         for i in inds:
             del freqs[i]
+
+        # create a sparse matrix and populate only the few entries that were found in the text
         text_features = np.zeros((1,len(self._dictionary.keys())))    
         text_features[0, [self._dictionary[w] for w in freqs.keys()]] = np.array(list(freqs.values()))/sum(freqs.values())
-        print(text_features)
+        # use the dimensionality reduction model that the model trained on
         if self._dim_red:
             text_features = self._dim_red.transform(text_features)
         return classifier.predict(text_features)
@@ -95,40 +99,6 @@ class Classification(object):
         return TWB.common.freq(text.split(' '))
     #edef
 
-
-
-    def _exist(self, text, tag):
-        '''
-        
-        Find the presence of a given tag in a given text 
-
-        parameters:
-        -----------
-        text: String
-            A collection of tokens/words/sentences packed in one string
-
-        tag: String
-            A certain word or bigram
-
-        returns:
-        Boolean
-
-        '''
-
-        lower_text = text.lower()
-        tag_index = lower_text.find(tag)
-        return tag_index > 0
-
-    
-    def _word_relative_freq(self, text, given_word):
-        total = len(re.findall(r'\w+', text)) 
-        count = len(re.findall('\w*'+ given_word +'\w*', text))
-        if total==0:
-            return 0
-        rel_freq = count/total
-        return rel_freq
-
-
     def train(self, X_train, Y_train, model=RandomForestClassifier()):
         '''
         
@@ -149,8 +119,6 @@ class Classification(object):
         '''
         if type(model).__name__ == 'RandomForestClassifier':
             model_name = 'rf'
-        elif type(model).__name__ == 'ABCMeta':
-            model_name = 'svc'
         
         if self._dim_red:
             X_train = self._dim_red.transform(X_train)
