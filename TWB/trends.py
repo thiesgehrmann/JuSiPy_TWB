@@ -120,6 +120,7 @@ class Trends(object):
         self._validation_df = kwargs.get('validation_df', None)
         self._topic = kwargs.get('topic', None)
         self._preload = None
+        self.zerocount = pd.DataFrame(dict(country=lsc.CC.iso3, count=[0 for i in lsc.CC.iso3])).set_index('country')['count']
         
     
     #edef
@@ -355,8 +356,12 @@ class Trends(object):
                         L.append(D)
                     #fi
                 #efor
-                self._preload = pd.concat(L)
-                self._preload.to_pickle(full_pkl_file)
+                if len(L) == 0:
+                    self._preload = None
+                else:
+                    self._preload = pd.concat(L)
+                    self._preload.to_pickle(full_pkl_file)
+                #fi
             else:
                 self._preload = pd.read_pickle(full_pkl_file)
             #fi
@@ -368,6 +373,10 @@ class Trends(object):
     def ranked_countries_per_topic(self, timestamp):
         
         P = self.preload()
+        
+        if P is None:
+            return self.zerocount
+        #fi
         
         return P.loc[timestamp].fillna(0).sum().sort_values(ascending=False)
     #edef

@@ -9,6 +9,9 @@ class API(object):
         
         T = [ a.text() for a in self.W.articles ]
         
+
+        self.trends = { t: TWB.Trends(None, topic=t) for t in tags }
+        
         self.N  = TWB.News(tags, news_api_key)
         self.TC = self.N.topic_countries
         
@@ -16,14 +19,14 @@ class API(object):
         self.A = self.D.annotate(T)
     #edef
     
-    def get(self, xliffs, max_topics=10):
+    def get(self, xliff, timestamp, max_topics=10):
         """
         
-        Get information about an xliff object/ list of xliff objects
+        Get information about an xliff object
         
         parameters:
         -----------
-        xliffs: List[TWB.XLIFF] | XLIFF
+        xliff: XLIFF
         
         max_topics: Integer
             Maximum number of topics to report (sorted by prevalence)
@@ -32,35 +35,30 @@ class API(object):
         dict
         """
         
-        if isinstance(xliffs, TWB.XLIFF):
-            xliffs = [ xliffs ]
+        if not isinstance(xliff, TWB.XLIFF):
+            raise valueError('Expecting a single XLIFF.')
         #fi
         
-        XA = [ { 'target_lsc' : self.lsc.detect(i.target_lang),
-                 'source_lsc' : self.lsc.detect(i.source_lang) } for i in xliffs ]
+        XA =  { 'target_lsc' : self.lsc.detect(xliff.target_lang),
+                 'source_lsc' : self.lsc.detect(xliff.source_lang) } 
         
-        topic_languages = self._get_topics_languages(xliffs, max_topics)
-        for i,v in enumerate(topic_languages):
-            XA[i]['topics'] = v
-        #efor
+        XA['topics'] = self._get_topics_languages(xliff, timestamp, max_topics)
         
         #Your other annotations
-        #o_annot = self._(xliffs)
-        #for i,v in enumerate(o_annot):
-        #   XA[i]['o_annot'] = v
-        #efor
+        #XA['o_annot'] = self._other_annot(xliffs)
+
         
         return XA
     #edef
     
-    def _get_topics_languages(self, xliffs, max_topics=10):
+    def _get_topics_languages(self, xliff, timestamp, max_topics=10):
         """
         Get the topic and target language relevance for an xliff object
         A bit messy for now...
         
         parameters:
         -----------
-        xliffs: List[TWB.XLIFF] | XLIFF
+        xliffs: XLIFF
             List of xliffs
         
         max_topics: Integer
@@ -69,6 +67,8 @@ class API(object):
         returns:
         dict
         """
+        
+        xliffs = [ xliff ]
         
         doc_text  = [ ' '.join(x.source) for x in xliffs ]
 
@@ -91,13 +91,22 @@ class API(object):
             target_lang = self.lsc.detect(xliffs[xliff_i].target_lang)
             source_lang = self.lsc.detect(xliffs[xliff_i].source_lang)
             A = { t : { 'distance' : d,
-                        'relevant_country_languages' : {
+                        'news_country_languages' : {
                             country : {
                               'frequency' : count,
                               'target_rel' : target_lang.language.iso3 in self.lsc.country_languages(country),
                               'source_rel' : source_lang.language.iso3 in self.lsc.country_languages(country)
                             }
                             for (country, count) in self.TC[t]
+                            if (target_lang.language.iso3 in self.lsc.country_languages(country)) # or (source_lang.language.iso3 in self.lsc.country_languages(country))
+                        },
+                        'trends_country_languages' : {
+                            country : {
+                              'frequency' : count,
+                              'target_rel' : target_lang.language.iso3 in self.lsc.country_languages(country),
+                              'source_rel' : source_lang.language.iso3 in self.lsc.country_languages(country)
+                            }
+                            for (country, count) in list(dict(self.trends[t].ranked_countries_per_topic(timestamp)[:10]).items())
                             if (target_lang.language.iso3 in self.lsc.country_languages(country)) # or (source_lang.language.iso3 in self.lsc.country_languages(country))
                         }
                       }
@@ -106,6 +115,6 @@ class API(object):
             
             xliff_annot.append(A)
         #efor
-        return xliff_annot
+        return xliff_annot[0]
     #edef
 #eclass
