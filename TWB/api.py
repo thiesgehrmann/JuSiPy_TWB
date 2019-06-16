@@ -98,6 +98,7 @@ class API(object):
                               'source_rel' : source_lang.language.iso3 in self.lsc.country_languages(country)
                             }
                             for (country, count) in self.TC[t]
+                            if (target_lang.language.iso3 in self.lsc.country_languages(country)) # or (source_lang.language.iso3 in self.lsc.country_languages(country))
                         }
                       }
                  for (t,d) in xt.items()

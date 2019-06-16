@@ -16,6 +16,9 @@ from bokeh.io import output_notebook
 from datetime import datetime as dt
 from bokeh.models import DatetimeTickFormatter
 
+import os
+dir_path = os.path.dirname(os.path.realpath(__file__))
+
 tags = [ 'humanitarian crisis',
          'natural disaster',
          'environmental crisis',
@@ -333,29 +336,37 @@ class Trends(object):
     def preload(self):
         if self._preload is None:
             unranked_df = pd.DataFrame(columns=('country', 'occurences'))
-            if not (os.path.isdir("Data/trends/topics/")):
-                os.mkdir('Data/trends/topics/')
+            if not (os.path.isdir("%s/../Data/trends/topics/" % dir_path)):
+                os.mkdir("%s/../Data/trends/topics/" % dir_path)
                 print('subfolder for topics created')
             #fi
-            L = []
-            for name in glob.glob('Data/trends/topics/'+self._topic+"/"+'*.pkl'):
-                per_country_df = pd.read_pickle(name)
-                if not (per_country_df.empty):
+            
+            full_pkl_file = '%s/../Data/trends/topics/%s.pkl' % (dir_path, self._topic)
+            if not os.path.exists(full_pkl_file):
+                L = []
+                for name in glob.glob(("%s/../Data/trends/topics/" % dir_path)+self._topic+"/"+'*.pkl'):
+                    per_country_df = pd.read_pickle(name)
+                    if not (per_country_df.empty):
 
-                    D = per_country_df.groupby(pd.TimeGrouper('M')).max()
-                    D = D[[D.columns[0]]]
-                    D = D.rename(columns={D.columns[0] : lsc.country(' '.join(D.columns[0].split(' ')[:-1])).iso3},
-                                 index={i : i.date().strftime('%Y-%m') for i in D.index})
-                    L.append(D)
-                #fi
-            #efor
-            self._preload = pd.concat(L)
+                        D = per_country_df.groupby(pd.TimeGrouper('M')).max()
+                        D = D[[D.columns[0]]]
+                        D = D.rename(columns={D.columns[0] : lsc.country(' '.join(D.columns[0].split(' ')[:-1])).iso3},
+                                     index={i : i.date().strftime('%Y-%m') for i in D.index})
+                        L.append(D)
+                    #fi
+                #efor
+                self._preload = pd.concat(L)
+                self._preload.to_pickle(full_pkl_file)
+            else:
+                self._preload = pd.read_pickle(full_pkl_file)
+            #fi
         #fi
             
         return self._preload
     #edef
     
     def ranked_countries_per_topic(self, timestamp):
+        
         P = self.preload()
         
         return P.loc[timestamp].fillna(0).sum().sort_values(ascending=False)

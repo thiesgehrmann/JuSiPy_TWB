@@ -1,4 +1,5 @@
 from collections import namedtuple
+import difflib
 from .common import *
 import numpy as np
 import pandas as pd
