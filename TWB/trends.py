@@ -85,6 +85,7 @@ def download_trends_for_compared_countries_general(country1, country2, tag):
                 #print('Data/trends/countries/'+self._country+'.pkl')
         if not (os.path.exists("Data/trends/topics/"+str(tag)+'/'+country1+'.pkl')):
             pytrend = TrendReq(hl='en-US', tz=360)
+            #pytrends = TrendReq(hl='en-US', tz=360, timeout=(10,25), proxies=['https://34.203.233.13:80',], retries=2, backoff_factor=0.1)
             pytrend.build_payload(comp_list, timeframe='all')
             interest_over_time_df = pytrend.interest_over_time()
             print("Country data do not exist, downloading now...")
@@ -121,6 +122,8 @@ class Trends(object):
         self._topic = kwargs.get('topic', None)
         self._preload = None
         self.zerocount = pd.DataFrame(dict(country=lsc.CC.iso3, count=[0 for i in lsc.CC.iso3])).set_index('country')['count']
+        
+        
         
     
     #edef
@@ -292,7 +295,10 @@ class Trends(object):
         
         
         df2 = pd.read_pickle('Data/trends/countries/'+ self._country+'.pkl')
-
+        
+        
+        
+        
         p = figure(title="Compare data for "+self._country, y_axis_type="linear", plot_height = 400,
                    tools = TOOLS, tooltips = TOOLTIPS, plot_width = 800)
 
@@ -301,11 +307,17 @@ class Trends(object):
         p.yaxis.axis_label = 'Total search'
         #p.circle(2010, temp_df.IncidntNum.min(), size = 10, color = 'red')
         
+        #determine y axis
+        #find start date of dataframe
         
-
-        p.line(self._validation_df.index, self._validation_df.values,line_color="purple", line_width = 3)
+        
+        
+        comp_values = np.interp(self._validation_df.values, (self._validation_df.values.min(), self._validation_df.values.max()), (0, 100))
+        p.line(self._validation_df.index,comp_values ,line_color="purple", line_width = 3)
         p.line(df2.index, df2[str(self._country)],line_color="red", line_width = 3)
         
+        p.x_range.start = (self._validation_df.index[0])
+        p.x_range.end = (df2.index[-1])
 
         p.xaxis.formatter=DatetimeTickFormatter(
 
@@ -313,6 +325,8 @@ class Trends(object):
                 months=["%d %B %Y"],
                 years=["%d %B %Y"],
             )
+        
+        
         # output_file("line_chart.html", title="Line Chart")
         show(p)
             
@@ -325,12 +339,12 @@ class Trends(object):
         for tag in tags:
             if not (os.path.isdir("Data/trends/topics/"+tag)):
                 os.mkdir('Data/trends/topics/'+tag)
-            for index, country in enumerate(lsc.CC.country):
-                if (index+1 < len(lsc.CC.country)):
-                    #fetch data per country + topic compared with country+1 +topic
-                    #print(lsc.CC.country[index], lsc.CC.country[index+1])
-                    download_trends_for_compared_countries_general(lsc.CC.country[index], lsc.CC.country[index+1], tag)
-                    
+                for index, country in enumerate(lsc.CC.country):
+                    if (index+1 < len(lsc.CC.country)):
+                        #fetch data per country + topic compared with country+1 +topic
+                        #print(lsc.CC.country[index], lsc.CC.country[index+1])
+                        download_trends_for_compared_countries_general(lsc.CC.country[index], lsc.CC.country[index+1], tag)
+
 
 
 
